@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fastapi-react-app
+    ports:
+      - "3000:3000"   # Frontend
+      - "8001:8001"   # Backend API
+      - "27017:27017" # MongoDB
+    volumes:
+      # Mount source code for development (comment out for production)
+      - ./backend:/app/backend
+      - ./frontend:/app/frontend
+      # Persistent MongoDB data
+      - mongodb_data:/data/db
+      # Logs
+      - ./logs:/var/log/supervisor
+    environment:
+      # Backend environment variables
+      - MONGO_URL=mongodb://localhost:27017
+      - DB_NAME=app_database
+      - CORS_ORIGINS=*
+      # Frontend environment variables
+      - REACT_APP_BACKEND_URL=http://localhost:8001
+      - PORT=3000
+      - HOST=0.0.0.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/api/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Separate MongoDB service (alternative to built-in MongoDB)
+  # Uncomment this and comment out MongoDB in Dockerfile if you prefer separate containers
+  # mongodb:
+  #   image: mongo:7.0
+  #   container_name: mongodb
+  #   ports:
+  #     - "27017:27017"
+  #   volumes:
+  #     - mongodb_data:/data/db
+  #   environment:
+  #     - MONGO_INITDB_DATABASE=app_database
+  #   restart: unless-stopped
+
+  # Optional: Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  default:
+    name: app-network
