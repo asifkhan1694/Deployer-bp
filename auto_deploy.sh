@@ -316,14 +316,18 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential curl wget git 
 print_success "Essential tools installed"
 
 ################################################################################
+CURRENT_STEP=3
 print_step "Installing Python 3.11"
 progress_bar
 
-add-apt-repository -y ppa:deadsnakes/ppa > /dev/null 2>&1
-apt-get update > /dev/null 2>&1
-apt-get install -y python3.11 python3.11-venv python3.11-dev python3-pip > /dev/null 2>&1
-update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 > /dev/null 2>&1
-print_success "Python 3.11 installed"
+print_info "Adding Python repository..."
+add-apt-repository -y ppa:deadsnakes/ppa 2>&1 | tee -a $LOG_FILE | tail -2 || true
+apt-get update -y 2>&1 | tee -a $LOG_FILE | grep -v "^Get:" || true
+
+print_info "Installing Python packages..."
+DEBIAN_FRONTEND=noninteractive apt-get install -y python3.11 python3.11-venv python3.11-dev python3-pip 2>&1 | tee -a $LOG_FILE | tail -3 || true
+update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 2>&1 | tee -a $LOG_FILE || true
+print_success "Python 3.11 installed ($(python3 --version))"
 
 ################################################################################
 print_step "Installing Node.js 20.x and Yarn"
