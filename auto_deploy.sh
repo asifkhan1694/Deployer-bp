@@ -376,6 +376,7 @@ else
 fi
 
 ################################################################################
+CURRENT_STEP=6
 print_step "Cloning Your Application"
 progress_bar
 
@@ -384,13 +385,16 @@ mkdir -p /opt/app
 cd /opt/app
 
 # Clone repository
-print_info "Cloning from $GIT_REPO..."
-git clone -b $GIT_BRANCH $GIT_REPO temp_clone > /dev/null 2>&1
-mv temp_clone/* temp_clone/.[!.]* . 2>/dev/null || true
-rm -rf temp_clone
-
-COMMIT_ID=$(git rev-parse --short HEAD)
-print_success "Application cloned (commit: $COMMIT_ID)"
+print_info "Cloning from $GIT_REPO (branch: $GIT_BRANCH)..."
+if git clone -b $GIT_BRANCH $GIT_REPO temp_clone 2>&1 | tee -a $LOG_FILE | tail -5; then
+    mv temp_clone/* temp_clone/.[!.]* . 2>/dev/null || true
+    rm -rf temp_clone
+    COMMIT_ID=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    print_success "Application cloned (commit: $COMMIT_ID)"
+else
+    print_error "Failed to clone repository. Please check the URL and branch name."
+    exit 1
+fi
 
 ################################################################################
 print_step "Setting Up Backend"
