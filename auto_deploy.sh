@@ -497,9 +497,11 @@ supervisorctl start all 2>&1 | tee -a $LOG_FILE || true
 print_success "Services started"
 
 ################################################################################
+CURRENT_STEP=10
 print_step "Configuring Nginx Reverse Proxy"
 progress_bar
 
+print_info "Creating Nginx configuration..."
 cat > /etc/nginx/sites-available/app <<EOF
 server {
     listen 80;
