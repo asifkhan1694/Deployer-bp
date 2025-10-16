@@ -488,9 +488,11 @@ killasgroup=true
 environment=HOST="0.0.0.0",PORT="$FRONTEND_PORT"
 EOF
 
-supervisorctl reread > /dev/null 2>&1
-supervisorctl update > /dev/null 2>&1
-supervisorctl start all > /dev/null 2>&1
+print_info "Starting services..."
+supervisorctl reread 2>&1 | tee -a $LOG_FILE || true
+supervisorctl update 2>&1 | tee -a $LOG_FILE || true
+sleep 2
+supervisorctl start all 2>&1 | tee -a $LOG_FILE || true
 
 print_success "Services started"
 
