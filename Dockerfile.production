@@ -1,0 +1,106 @@
+# Production Dockerfile for FastAPI + React Application
+# This creates a complete, self-contained environment
+
+FROM ubuntu:22.04
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV NODE_ENV=development
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies in one layer
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    wget \
+    git \
+    software-properties-common \
+    ca-certificates \
+    gnupg \
+    supervisor \
+    nginx \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python 3.11
+RUN add-apt-repository -y ppa:deadsnakes/ppa && \
+    apt-get update && \
+    apt-get install -y \
+    python3.11 \
+    python3.11-venv \
+    python3.11-dev \
+    python3-pip \
+    && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 20.x
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    npm install -g yarn && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install MongoDB
+RUN curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | \
+    gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor && \
+    echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | \
+    tee /etc/apt/sources.list.d/mongodb-org-7.0.list && \
+    apt-get update && \
+    apt-get install -y mongodb-org && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create necessary directories
+RUN mkdir -p /data/db /var/log/supervisor /app/backend /app/frontend
+
+# Accept build arguments for git repo
+ARG GIT_REPO
+ARG GIT_BRANCH=main
+
+# Clone application code
+RUN if [ -n "$GIT_REPO" ]; then \
+        git clone -b ${GIT_BRANCH} ${GIT_REPO} /tmp/app && \
+        cp -r /tmp/app/* /app/ && \
+        rm -rf /tmp/app; \
+    fi
+
+# Install Python dependencies
+COPY backend/requirements.txt /app/backend/requirements.txt 2>/dev/null || true
+RUN if [ -f /app/backend/requirements.txt ]; then \
+        cd /app/backend && \
+        python3 -m venv /app/venv && \
+        /app/venv/bin/pip install --upgrade pip && \
+        # Remove problematic packages
+        grep -v "emergentintegrations" requirements.txt > requirements_clean.txt || cp requirements.txt requirements_clean.txt && \
+        /app/venv/bin/pip install -r requirements_clean.txt; \
+    fi
+
+# Install Node.js dependencies
+COPY frontend/package.json frontend/yarn.lock /app/frontend/ 2>/dev/null || true
+RUN if [ -f /app/frontend/package.json ]; then \
+        cd /app/frontend && \
+        yarn install --frozen-lockfile --network-timeout 300000; \
+    fi
+
+# Copy supervisor configuration
+COPY docker/supervisord-production.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Copy nginx configuration
+COPY docker/nginx-production.conf /etc/nginx/sites-available/default
+
+# Copy environment templates
+COPY docker/.env.backend.template /app/backend/.env.template
+COPY docker/.env.frontend.template /app/frontend/.env.template
+
+# Expose ports
+EXPOSE 80 3000 8001 27017
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8001/api/ || exit 1
+
+# Start script
+COPY docker/start.sh /start.sh
+RUN chmod +x /start.sh
+
+CMD ["/start.sh"]
