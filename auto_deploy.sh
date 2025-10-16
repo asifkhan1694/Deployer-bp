@@ -280,15 +280,28 @@ fi
 
 # Log file
 LOG_FILE="/var/log/auto_deploy_$(date +%Y%m%d_%H%M%S).log"
-exec > >(tee -a $LOG_FILE)
-exec 2>&1
 
 print_banner
+
+################################################################################
+CURRENT_STEP=1
 print_step "Updating System Packages"
 progress_bar
 
-apt-get update -y > /dev/null 2>&1
-apt-get upgrade -y > /dev/null 2>&1
+# Fix any stuck apt processes
+print_info "Checking for package manager locks..."
+killall apt apt-get 2>/dev/null || true
+rm -f /var/lib/apt/lists/lock 2>/dev/null || true
+rm -f /var/cache/apt/archives/lock 2>/dev/null || true
+rm -f /var/lib/dpkg/lock* 2>/dev/null || true
+dpkg --configure -a 2>/dev/null || true
+
+print_info "Updating package lists (this may take a minute)..."
+DEBIAN_FRONTEND=noninteractive apt-get update -y 2>&1 | tee -a $LOG_FILE | grep -v "^Get:" || true
+
+print_info "Upgrading system packages..."
+DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" 2>&1 | tee -a $LOG_FILE | tail -5 || true
+
 print_success "System updated"
 
 ################################################################################
