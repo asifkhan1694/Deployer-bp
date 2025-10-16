@@ -397,21 +397,24 @@ else
 fi
 
 ################################################################################
+CURRENT_STEP=7
 print_step "Setting Up Backend"
 progress_bar
 
 cd /opt/app/backend
 
 # Create virtual environment
-python3 -m venv /opt/app/venv > /dev/null 2>&1
+print_info "Creating Python virtual environment..."
+python3 -m venv /opt/app/venv 2>&1 | tee -a $LOG_FILE || true
 source /opt/app/venv/bin/activate
 
 # Install dependencies
-print_info "Installing Python packages..."
-pip install --upgrade pip > /dev/null 2>&1
-pip install -r requirements.txt > /dev/null 2>&1
+print_info "Installing Python packages (this may take 2-3 minutes)..."
+pip install --upgrade pip 2>&1 | tee -a $LOG_FILE | tail -2 || true
+pip install -r requirements.txt 2>&1 | tee -a $LOG_FILE | tail -5 || true
 
 # Create .env file
+print_info "Creating backend configuration..."
 cat > .env <<EOF
 MONGO_URL=$MONGO_URL
 DB_NAME=${DB_NAME:-app_database}
