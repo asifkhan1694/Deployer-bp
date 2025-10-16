@@ -279,6 +279,7 @@ fi
 
 # Log file
 LOG_FILE="/var/log/auto_deploy_$(date +%Y%m%d_%H%M%S).log"
+echo "Log file: $LOG_FILE" > $LOG_FILE
 
 print_banner
 
@@ -290,16 +291,30 @@ progress_bar
 # Fix any stuck apt processes
 print_info "Checking for package manager locks..."
 killall apt apt-get 2>/dev/null || true
+sleep 1
 rm -f /var/lib/apt/lists/lock 2>/dev/null || true
 rm -f /var/cache/apt/archives/lock 2>/dev/null || true
 rm -f /var/lib/dpkg/lock* 2>/dev/null || true
-dpkg --configure -a 2>/dev/null || true
+dpkg --configure -a 2>&1 | head -5
+sleep 1
 
-print_info "Updating package lists (this may take a minute)..."
-DEBIAN_FRONTEND=noninteractive apt-get update -y 2>&1 | tee -a $LOG_FILE | grep -v "^Get:" || true
+print_info "Updating package lists..."
+echo "This shows LIVE output - you'll see packages updating:"
+echo "---"
 
-print_info "Upgrading system packages..."
-DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" 2>&1 | tee -a $LOG_FILE | tail -5 || true
+# Run apt-get update with visible output
+if DEBIAN_FRONTEND=noninteractive apt-get update -y 2>&1 | tee -a $LOG_FILE; then
+    print_success "Package lists updated"
+else
+    print_warning "Update had some warnings, but continuing..."
+fi
+
+echo ""
+print_info "Upgrading existing packages (this may take 2-3 minutes)..."
+echo "---"
+
+# Run apt-get upgrade with visible output but filter noise
+DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" 2>&1 | tee -a $LOG_FILE | grep -E "upgraded|newly installed|Unpacking|Setting up|Processing" || true
 
 print_success "System updated"
 
