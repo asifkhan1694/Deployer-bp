@@ -42,7 +42,6 @@ print_banner() {
 }
 
 progress_bar() {
-    CURRENT_STEP=$((CURRENT_STEP + 1))
     PERCENT=$((CURRENT_STEP * 100 / TOTAL_STEPS))
     FILLED=$((PERCENT / 2))
     EMPTY=$((50 - FILLED))
