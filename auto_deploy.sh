@@ -305,11 +305,14 @@ DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -o Dpkg::Options::="--force-co
 print_success "System updated"
 
 ################################################################################
+CURRENT_STEP=2
 print_step "Installing Essential Tools"
 progress_bar
 
-apt-get install -y build-essential curl wget git software-properties-common \
-    apt-transport-https ca-certificates gnupg lsb-release supervisor nginx > /dev/null 2>&1
+print_info "Installing build tools, git, nginx, supervisor..."
+DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential curl wget git \
+    software-properties-common apt-transport-https ca-certificates gnupg \
+    lsb-release supervisor nginx 2>&1 | tee -a $LOG_FILE | tail -3 || true
 print_success "Essential tools installed"
 
 ################################################################################
