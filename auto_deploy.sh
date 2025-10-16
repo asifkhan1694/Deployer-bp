@@ -424,6 +424,7 @@ EOF
 print_success "Backend configured"
 
 ################################################################################
+CURRENT_STEP=8
 print_step "Setting Up Frontend"
 progress_bar
 
@@ -440,14 +441,15 @@ else
     fi
 fi
 
+print_info "Creating frontend configuration..."
 cat > .env <<EOF
 REACT_APP_BACKEND_URL=$BACKEND_URL
 PORT=$FRONTEND_PORT
 EOF
 
 # Install dependencies
-print_info "Installing Node.js packages (this may take a minute)..."
-yarn install --frozen-lockfile > /dev/null 2>&1
+print_info "Installing Node.js packages (this may take 3-5 minutes)..."
+yarn install --frozen-lockfile 2>&1 | tee -a $LOG_FILE | grep -E "success|warning|error" | tail -10 || true
 
 print_success "Frontend configured"
 
