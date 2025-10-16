@@ -549,20 +549,25 @@ fi
 
 ################################################################################
 if [ "$SETUP_SSL" = true ]; then
-    print_step "Setting Up SSL Certificate (Let's Encrypt)"
-    progress_bar
+    echo ""
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BOLD}Setting Up SSL Certificate (Let's Encrypt)${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     
     print_info "Installing Certbot..."
-    apt-get install -y certbot python3-certbot-nginx > /dev/null 2>&1
+    DEBIAN_FRONTEND=noninteractive apt-get install -y certbot python3-certbot-nginx 2>&1 | tee -a $LOG_FILE | tail -3 || true
     
-    print_info "Obtaining SSL certificate..."
-    certbot --nginx -d $DOMAIN_NAME --non-interactive --agree-tos --email $SSL_EMAIL --redirect > /dev/null 2>&1
+    print_info "Obtaining SSL certificate (this may take a minute)..."
+    if certbot --nginx -d $DOMAIN_NAME --non-interactive --agree-tos --email $SSL_EMAIL --redirect 2>&1 | tee -a $LOG_FILE | tail -10; then
+        print_success "SSL certificate installed successfully"
+    else
+        print_warning "SSL setup had issues. Check $LOG_FILE for details."
+    fi
     
-    print_success "SSL certificate installed"
     ACCESS_URL="https://$DOMAIN_NAME"
 else
-    print_step "Finalizing Setup"
-    progress_bar
+    echo ""
+    print_info "Finalizing setup..."
     
     if [ "$USE_DOMAIN" = true ]; then
         ACCESS_URL="http://$DOMAIN_NAME"
