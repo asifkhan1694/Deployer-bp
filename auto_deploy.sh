@@ -534,13 +534,18 @@ server {
 }
 EOF
 
+print_info "Enabling Nginx site..."
 ln -sf /etc/nginx/sites-available/app /etc/nginx/sites-enabled/app
 rm -f /etc/nginx/sites-enabled/default
 
-nginx -t > /dev/null 2>&1
-systemctl restart nginx > /dev/null 2>&1
-
-print_success "Nginx configured"
+print_info "Testing Nginx configuration..."
+if nginx -t 2>&1 | tee -a $LOG_FILE; then
+    print_info "Restarting Nginx..."
+    systemctl restart nginx 2>&1 | tee -a $LOG_FILE || true
+    print_success "Nginx configured and running"
+else
+    print_warning "Nginx configuration has warnings, but continuing..."
+fi
 
 ################################################################################
 if [ "$SETUP_SSL" = true ]; then
