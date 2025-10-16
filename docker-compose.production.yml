@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      args:
+        GIT_REPO: ${GIT_REPO}
+        GIT_BRANCH: ${GIT_BRANCH:-main}
+    container_name: fastapi-react-app
+    ports:
+      - "80:80"       # Nginx
+      - "3000:3000"   # Frontend (optional for direct access)
+      - "8001:8001"   # Backend (optional for direct access)
+      - "27017:27017" # MongoDB (optional for direct access)
+    volumes:
+      # Persistent MongoDB data
+      - mongodb_data:/data/db
+      # Logs
+      - ./logs:/var/log/supervisor
+      # Optional: Mount code for development (comment out for production)
+      # - ./backend:/app/backend
+      # - ./frontend:/app/frontend
+    environment:
+      # MongoDB config
+      - MONGO_URL=${MONGO_URL:-mongodb://localhost:27017}
+      - DB_NAME=${DB_NAME:-app_database}
+      # Backend config
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      # Frontend config
+      - BACKEND_URL=${BACKEND_URL:-http://localhost:8001}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  default:
+    name: app-network
