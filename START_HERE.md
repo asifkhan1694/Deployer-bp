@@ -135,6 +135,25 @@ sudo bash auto_deploy.sh
 
 ## 🆘 Common Issues
 
+### Installer Freezes or Hangs
+
+**Most common cause:** Package manager lock
+
+**Quick fix:**
+
+```bash
+# Press Ctrl+C to stop, then:
+sudo killall apt apt-get
+sudo rm -f /var/lib/dpkg/lock*
+sudo dpkg --configure -a
+
+# Run test first:
+sudo bash test_installer.sh
+
+# Then run installer again:
+sudo bash auto_deploy.sh
+```
+
 ### Can't Connect to Server
 
 ```bash
@@ -144,7 +163,7 @@ ssh -i YOUR-KEY.pem ubuntu@YOUR-IP
 
 ### Site Not Loading
 
-**Wait 1 minute, then try again.**
+**Wait 1-2 minutes, then try again.**
 
 Still not working?
 
@@ -161,6 +180,10 @@ sudo bash auto_deploy.sh
 ```
 
 The installer is smart - it fixes itself!
+
+### Need More Help?
+
+See detailed solutions: [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)
 
 ---
 
