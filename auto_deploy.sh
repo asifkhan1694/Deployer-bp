@@ -330,13 +330,19 @@ update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 2>&
 print_success "Python 3.11 installed ($(python3 --version))"
 
 ################################################################################
+CURRENT_STEP=4
 print_step "Installing Node.js 20.x and Yarn"
 progress_bar
 
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash - > /dev/null 2>&1
-apt-get install -y nodejs > /dev/null 2>&1
-npm install -g yarn > /dev/null 2>&1
-print_success "Node.js and Yarn installed"
+print_info "Setting up Node.js repository..."
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash - 2>&1 | tee -a $LOG_FILE | tail -5 || true
+
+print_info "Installing Node.js..."
+DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs 2>&1 | tee -a $LOG_FILE | tail -3 || true
+
+print_info "Installing Yarn..."
+npm install -g yarn 2>&1 | tee -a $LOG_FILE | tail -2 || true
+print_success "Node.js $(node --version) and Yarn $(yarn --version) installed"
 
 ################################################################################
 if [ "$MONGO_SELF_HOSTED" = true ]; then
