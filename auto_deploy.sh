@@ -454,9 +454,11 @@ yarn install --frozen-lockfile 2>&1 | tee -a $LOG_FILE | grep -E "success|warnin
 print_success "Frontend configured"
 
 ################################################################################
+CURRENT_STEP=9
 print_step "Configuring Process Management (Supervisor)"
 progress_bar
 
+print_info "Creating Supervisor configuration..."
 cat > /etc/supervisor/conf.d/app.conf <<EOF
 [program:backend]
 command=/opt/app/venv/bin/uvicorn server:app --host 0.0.0.0 --port $BACKEND_PORT --workers 2
