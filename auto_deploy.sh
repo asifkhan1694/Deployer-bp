@@ -345,21 +345,28 @@ npm install -g yarn 2>&1 | tee -a $LOG_FILE | tail -2 || true
 print_success "Node.js $(node --version) and Yarn $(yarn --version) installed"
 
 ################################################################################
+CURRENT_STEP=5
 if [ "$MONGO_SELF_HOSTED" = true ]; then
     print_step "Installing MongoDB 7.0"
     progress_bar
     
+    print_info "Adding MongoDB GPG key..."
     curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | \
-        gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor > /dev/null 2>&1
+        gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor 2>&1 | tee -a $LOG_FILE || true
     
+    print_info "Adding MongoDB repository..."
     echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | \
-        tee /etc/apt/sources.list.d/mongodb-org-7.0.list > /dev/null 2>&1
+        tee /etc/apt/sources.list.d/mongodb-org-7.0.list 2>&1 | tee -a $LOG_FILE || true
     
-    apt-get update > /dev/null 2>&1
-    apt-get install -y mongodb-org > /dev/null 2>&1
+    apt-get update -y 2>&1 | tee -a $LOG_FILE | grep -v "^Get:" || true
     
-    systemctl enable mongod > /dev/null 2>&1
-    systemctl start mongod > /dev/null 2>&1
+    print_info "Installing MongoDB (this may take 2-3 minutes)..."
+    DEBIAN_FRONTEND=noninteractive apt-get install -y mongodb-org 2>&1 | tee -a $LOG_FILE | tail -5 || true
+    
+    print_info "Starting MongoDB..."
+    systemctl enable mongod 2>&1 | tee -a $LOG_FILE || true
+    systemctl start mongod 2>&1 | tee -a $LOG_FILE || true
+    sleep 3
     
     print_success "MongoDB installed and running"
 else
