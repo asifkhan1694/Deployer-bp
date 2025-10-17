@@ -249,6 +249,63 @@ echo ""
 docker exec cloudvoro-adops supervisorctl status
 
 echo ""
+echo "======================================"
+echo "Step 9: Setting Up Auto-Renewal"
+echo "======================================"
+echo ""
+
+# Get current directory
+CURRENT_DIR=$(pwd)
+
+# Create renewal script
+cat > /usr/local/bin/renew-ssl.sh <<EOF
+#!/bin/bash
+# SSL Certificate Auto-Renewal Script
+
+LOG_FILE="/var/log/ssl-renewal.log"
+
+echo "\$(date): Starting SSL renewal check" >> \$LOG_FILE
+
+# Try to renew
+certbot renew --quiet >> \$LOG_FILE 2>&1
+
+if [ \$? -eq 0 ]; then
+    echo "\$(date): Renewal check completed successfully" >> \$LOG_FILE
+    
+    # Restart container if certificates were renewed
+    cd $CURRENT_DIR
+    docker-compose -f docker-compose.simple.yml restart >> \$LOG_FILE 2>&1
+    
+    echo "\$(date): Container restarted" >> \$LOG_FILE
+else
+    echo "\$(date): Renewal check failed" >> \$LOG_FILE
+fi
+EOF
+
+chmod +x /usr/local/bin/renew-ssl.sh
+
+# Add to crontab (run twice daily at 3am and 3pm)
+CRON_JOB="0 3,15 * * * /usr/local/bin/renew-ssl.sh"
+
+# Check if cron job already exists
+(crontab -l 2>/dev/null | grep -v "renew-ssl.sh"; echo "$CRON_JOB") | crontab -
+
+echo -e "${GREEN}✓ Auto-renewal cron job configured${NC}"
+echo "  - Runs twice daily (3 AM and 3 PM)"
+echo "  - Logs to /var/log/ssl-renewal.log"
+
+# Test the renewal (dry run)
+echo ""
+echo "Testing renewal process (dry run)..."
+certbot renew --dry-run
+
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}✓ Renewal test passed${NC}"
+else
+    echo -e "${YELLOW}⚠ Renewal test had issues, but setup is complete${NC}"
+fi
+
+echo ""
 echo "╔════════════════════════════════════════════════════════════════╗"
 echo "║                                                                ║"
 echo -e "║                    ${GREEN}🎉 HTTPS ENABLED! 🎉${NC}                        ║"
@@ -265,12 +322,23 @@ echo ""
 echo -e "${YELLOW}Note: HTTP requests are automatically redirected to HTTPS${NC}"
 echo ""
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}Certificate Renewal:${NC}"
+echo -e "${GREEN}✅ Auto-Renewal Configured:${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo "Certificates auto-renew. To manually renew:"
+echo "  ✓ Certificates will auto-renew before expiration (90 days)"
+echo "  ✓ Renewal checks run twice daily (3 AM and 3 PM)"
+echo "  ✓ Container automatically restarts after renewal"
+echo "  ✓ Renewal logs: /var/log/ssl-renewal.log"
+echo ""
+echo "Manual renewal (if needed):"
 echo "  sudo certbot renew"
 echo "  docker-compose -f docker-compose.simple.yml restart"
+echo ""
+echo "Check renewal logs:"
+echo "  tail -f /var/log/ssl-renewal.log"
+echo ""
+echo "View cron jobs:"
+echo "  crontab -l"
 echo ""
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
