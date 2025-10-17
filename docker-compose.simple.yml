@@ -1,0 +1,32 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.simple
+      args:
+        GIT_REPO: ${GIT_REPO}
+        GIT_BRANCH: ${GIT_BRANCH:-main}
+    container_name: cloudvoro-adops
+    ports:
+      - "80:80"
+      - "3000:3000"
+      - "8001:8001"
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./logs:/var/log/supervisor
+    environment:
+      - MONGO_URL=${MONGO_URL:-mongodb://localhost:27017}
+      - DB_NAME=${DB_NAME:-app_database}
+      - BACKEND_URL=${BACKEND_URL}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  mongodb_data:
