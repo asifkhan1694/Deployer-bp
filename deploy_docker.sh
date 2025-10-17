@@ -47,8 +47,16 @@ check_docker() {
 # Function to check if Docker Compose is installed
 check_docker_compose() {
     if docker compose version &> /dev/null; then
-        echo -e "${GREEN}✓ Docker Compose is installed${NC}"
+        echo -e "${GREEN}✓ Docker Compose (plugin) is installed${NC}"
         docker compose version
+        return 0
+    elif docker-compose --version &> /dev/null; then
+        echo -e "${GREEN}✓ Docker Compose (standalone) is installed${NC}"
+        docker-compose --version
+        # Create alias for consistency
+        if ! command -v docker &> /dev/null || ! docker compose version &> /dev/null; then
+            echo "Note: Using 'docker-compose' (standalone version)"
+        fi
         return 0
     else
         return 1
