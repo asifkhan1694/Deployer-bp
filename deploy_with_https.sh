@@ -244,6 +244,50 @@ echo "Waiting for startup (30 seconds)..."
 sleep 30
 
 echo ""
+echo "======================================"
+echo "Setting Up SSL Auto-Renewal"
+echo "======================================"
+echo ""
+
+# Get current directory
+CURRENT_DIR=$(pwd)
+
+# Create renewal script
+cat > /usr/local/bin/renew-ssl.sh <<'EOFSCRIPT'
+#!/bin/bash
+# SSL Certificate Auto-Renewal Script
+
+LOG_FILE="/var/log/ssl-renewal.log"
+
+echo "$(date): Starting SSL renewal check" >> $LOG_FILE
+
+# Try to renew
+certbot renew --quiet >> $LOG_FILE 2>&1
+
+if [ $? -eq 0 ]; then
+    echo "$(date): Renewal check completed successfully" >> $LOG_FILE
+    
+    # Restart container if certificates were renewed
+    cd CURRENT_DIR_PLACEHOLDER
+    docker-compose -f docker-compose.simple.yml restart >> $LOG_FILE 2>&1
+    
+    echo "$(date): Container restarted" >> $LOG_FILE
+else
+    echo "$(date): Renewal check failed" >> $LOG_FILE
+fi
+EOFSCRIPT
+
+# Replace placeholder with actual directory
+sed -i "s|CURRENT_DIR_PLACEHOLDER|$CURRENT_DIR|g" /usr/local/bin/renew-ssl.sh
+chmod +x /usr/local/bin/renew-ssl.sh
+
+# Add to crontab (run twice daily)
+CRON_JOB="0 3,15 * * * /usr/local/bin/renew-ssl.sh"
+(crontab -l 2>/dev/null | grep -v "renew-ssl.sh"; echo "$CRON_JOB") | crontab -
+
+echo -e "${GREEN}✓ Auto-renewal cron job configured${NC}"
+
+echo ""
 echo "╔════════════════════════════════════════════════════════════════╗"
 echo "║                                                                ║"
 echo -e "║                    ${GREEN}🎉 SUCCESS! 🎉${NC}                             ║"
@@ -257,7 +301,12 @@ echo -e "  ${GREEN}📡 API Docs:${NC}     https://$DOMAIN/api/docs"
 echo ""
 echo -e "${YELLOW}HTTP requests automatically redirect to HTTPS${NC}"
 echo ""
-echo "Certificate auto-renews. Manual renewal:"
+echo -e "${GREEN}✅ SSL Auto-Renewal Configured:${NC}"
+echo "  ✓ Runs twice daily (3 AM and 3 PM)"
+echo "  ✓ Logs to /var/log/ssl-renewal.log"
+echo "  ✓ Automatically restarts container after renewal"
+echo ""
+echo "Manual renewal if needed:"
 echo "  sudo certbot renew"
 echo "  $DC -f docker-compose.simple.yml restart"
 echo ""
