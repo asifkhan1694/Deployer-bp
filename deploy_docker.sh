@@ -193,10 +193,10 @@ echo "=========================================="
 echo ""
 
 # Stop and remove old containers
-docker compose -f docker-compose.production.yml down 2>/dev/null || true
+$DOCKER_COMPOSE -f docker-compose.production.yml down 2>/dev/null || true
 
 # Start new container
-docker compose -f docker-compose.production.yml up -d
+$DOCKER_COMPOSE -f docker-compose.production.yml up -d
 
 echo ""
 echo "=========================================="
