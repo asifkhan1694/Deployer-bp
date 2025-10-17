@@ -79,13 +79,33 @@ if ! check_docker_compose; then
     echo -e "${YELLOW}Docker Compose not found. Installing...${NC}"
     echo ""
     
+    # Fix apt_pkg error first
+    echo "→ Fixing apt_pkg module..."
+    apt-get install --reinstall python3-apt -y 2>/dev/null || true
+    
     # Docker Compose should be included with modern Docker
     # If not, install the plugin
-    apt-get update
-    apt-get install -y docker-compose-plugin
+    echo "→ Installing docker-compose-plugin..."
+    apt-get update 2>&1 | grep -v "Traceback" | grep -v "apt_pkg" | grep -v "cnf-update-db" || true
+    apt-get install -y docker-compose-plugin 2>&1 | grep -E "Setting up|already" || true
     
     echo ""
-    check_docker_compose
+    if check_docker_compose; then
+        echo -e "${GREEN}✓ Docker Compose installed successfully${NC}"
+    else
+        echo -e "${YELLOW}⚠ Docker Compose plugin installation had issues, trying alternative...${NC}"
+        # Try standalone docker-compose
+        curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+        chmod +x /usr/local/bin/docker-compose
+        ln -sf /usr/local/bin/docker-compose /usr/bin/docker-compose
+        
+        if docker-compose --version 2>/dev/null; then
+            echo -e "${GREEN}✓ Docker Compose (standalone) installed${NC}"
+        else
+            echo -e "${RED}✗ Failed to install Docker Compose. Please install manually.${NC}"
+            exit 1
+        fi
+    fi
 fi
 
 echo ""
