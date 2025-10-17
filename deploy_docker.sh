@@ -207,7 +207,7 @@ echo ""
 # Wait for health check
 echo "Waiting for application to be healthy (this takes 30-60 seconds)..."
 for i in {1..30}; do
-    if docker compose -f docker-compose.production.yml ps | grep -q "healthy"; then
+    if $DOCKER_COMPOSE -f docker-compose.production.yml ps | grep -q "healthy\|Up"; then
         echo -e "${GREEN}✓ Application is healthy!${NC}"
         break
     fi
@@ -223,7 +223,7 @@ echo "=========================================="
 echo ""
 
 # Show container status
-docker compose -f docker-compose.production.yml ps
+$DOCKER_COMPOSE -f docker-compose.production.yml ps
 
 echo ""
 echo "=========================================="
@@ -231,7 +231,7 @@ echo "Viewing Logs (last 20 lines)"
 echo "=========================================="
 echo ""
 
-docker compose -f docker-compose.production.yml logs --tail=20
+$DOCKER_COMPOSE -f docker-compose.production.yml logs --tail=20
 
 echo ""
 echo "╔════════════════════════════════════════════════════════════════╗"
