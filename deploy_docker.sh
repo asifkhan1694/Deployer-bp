@@ -173,8 +173,18 @@ echo "This will take 5-10 minutes on first run..."
 echo "Subsequent builds are much faster (cached layers)"
 echo ""
 
+# Determine which docker-compose command to use
+if docker compose version &> /dev/null 2>&1; then
+    DOCKER_COMPOSE="docker compose"
+else
+    DOCKER_COMPOSE="docker-compose"
+fi
+
+echo "Using: $DOCKER_COMPOSE"
+echo ""
+
 # Build the image
-docker compose -f docker-compose.production.yml build
+$DOCKER_COMPOSE -f docker-compose.production.yml build
 
 echo ""
 echo "=========================================="
