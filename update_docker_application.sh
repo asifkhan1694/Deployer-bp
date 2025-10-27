@@ -110,25 +110,25 @@ echo ""
 print_info "Scanning for Docker deployments..."
 echo ""
 
-compose_dirs=()
 declare -A seen_dirs
+compose_dirs=()
 
 # Check common locations for docker-compose files
-for location in . /opt/* /var/www/* /home/*/* /srv/*; do
+for location in /opt/* /var/www/* /home/*/* /srv/* .; do
     if [ -d "$location" ]; then
+        # Get absolute path to avoid duplicates
+        abs_path=$(realpath "$location" 2>/dev/null || readlink -f "$location" 2>/dev/null || echo "$location")
+        
         # Check if any compose file exists
         has_compose=false
         for compose_file in docker-compose.yml docker-compose.simple.yml docker-compose.production.yml; do
-            if [ -f "$location/$compose_file" ]; then
+            if [ -f "$abs_path/$compose_file" ]; then
                 has_compose=true
                 break
             fi
         done
         
         if [ "$has_compose" = true ]; then
-            # Get absolute path to avoid duplicates
-            abs_path=$(cd "$location" && pwd)
-            
             # Skip if we've already seen this directory
             if [ -z "${seen_dirs[$abs_path]}" ]; then
                 seen_dirs[$abs_path]=1
