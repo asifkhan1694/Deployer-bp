@@ -138,7 +138,7 @@ for location in . /opt/* /var/www/* /home/*/* /srv/*; do
     fi
 done
 
-if [ ${#compose_files[@]} -eq 0 ]; then
+if [ ${#compose_dirs[@]} -eq 0 ]; then
     print_error "No docker-compose files found"
     echo ""
     echo "This script looks for:"
@@ -160,11 +160,6 @@ if [ ${#compose_files[@]} -eq 0 ]; then
         echo ""
         if ask_yes_no "Update application in current directory?" "Y"; then
             SELECTED_DIR=$(pwd)
-            if [ -f "docker-compose.simple.yml" ]; then
-                COMPOSE_FILE="docker-compose.simple.yml"
-            else
-                COMPOSE_FILE="docker-compose.yml"
-            fi
         else
             exit 0
         fi
@@ -173,32 +168,40 @@ if [ ${#compose_files[@]} -eq 0 ]; then
     fi
 else
     # Display found deployments
-    echo -e "${BOLD}${GREEN}Found ${#compose_files[@]} Docker deployment(s):${NC}"
+    echo -e "${BOLD}${GREEN}Found ${#compose_dirs[@]} Docker deployment(s):${NC}"
     echo ""
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     
     counter=1
-    for i in "${!compose_files[@]}"; do
-        dir="${compose_dirs[$i]}"
-        file="${compose_files[$i]}"
+    for dir in "${compose_dirs[@]}"; do
+        cd "$dir"
+        
+        # List available compose files
+        available_files=""
+        for cfile in docker-compose.yml docker-compose.simple.yml docker-compose.production.yml; do
+            if [ -f "$cfile" ]; then
+                if [ -z "$available_files" ]; then
+                    available_files="$cfile"
+                else
+                    available_files="$available_files, $cfile"
+                fi
+            fi
+        done
         
         # Check if containers are running
-        cd "$dir"
-        if $DC -f "$file" ps 2>/dev/null | grep -q "Up"; then
-            status="🟢 Running"
-        else
-            status="⚫ Stopped"
-        fi
-        
-        # Get container names
-        containers=$($DC -f "$file" ps --format '{{.Service}}' 2>/dev/null | tr '\n' ', ' | sed 's/,$//')
+        status="⚫ No containers"
+        for cfile in docker-compose.yml docker-compose.simple.yml docker-compose.production.yml; do
+            if [ -f "$cfile" ]; then
+                if $DC -f "$cfile" ps 2>/dev/null | grep -q "Up"; then
+                    status="🟢 Running"
+                    break
+                fi
+            fi
+        done
         
         echo -e "${WHITE}[$counter]${NC} ${BOLD}$dir${NC}"
-        echo -e "    ${CYAN}Compose File:${NC} $file"
+        echo -e "    ${CYAN}Compose Files:${NC} $available_files"
         echo -e "    ${CYAN}Status:${NC} $status"
-        if [ -n "$containers" ]; then
-            echo -e "    ${CYAN}Services:${NC} $containers"
-        fi
         echo ""
         
         ((counter++))
@@ -208,25 +211,59 @@ else
     echo ""
     
     # Select deployment
-    if [ ${#compose_files[@]} -eq 1 ]; then
+    if [ ${#compose_dirs[@]} -eq 1 ]; then
         SELECTION=1
         print_info "Only one deployment found, selecting automatically..."
     else
-        read -p "Select deployment to update (1-${#compose_files[@]}) or 0 to exit: " SELECTION
+        read -p "Select deployment to update (1-${#compose_dirs[@]}) or 0 to exit: " SELECTION
         
         if [ "$SELECTION" -eq 0 ]; then
             echo "Update cancelled"
             exit 0
         fi
         
-        if [ "$SELECTION" -lt 1 ] || [ "$SELECTION" -gt ${#compose_files[@]} ]; then
+        if [ "$SELECTION" -lt 1 ] || [ "$SELECTION" -gt ${#compose_dirs[@]} ]; then
             print_error "Invalid selection"
             exit 1
         fi
     fi
     
     SELECTED_DIR="${compose_dirs[$((SELECTION-1))]}"
-    COMPOSE_FILE="${compose_files[$((SELECTION-1))]}"
+fi
+
+# Now select which compose file to use
+cd "$SELECTED_DIR"
+
+# Find available compose files
+available_compose_files=()
+for cfile in docker-compose.yml docker-compose.simple.yml docker-compose.production.yml; do
+    if [ -f "$cfile" ]; then
+        available_compose_files+=("$cfile")
+    fi
+done
+
+if [ ${#available_compose_files[@]} -eq 0 ]; then
+    print_error "No docker-compose files found in $SELECTED_DIR"
+    exit 1
+elif [ ${#available_compose_files[@]} -eq 1 ]; then
+    COMPOSE_FILE="${available_compose_files[0]}"
+    print_info "Using: $COMPOSE_FILE"
+else
+    echo ""
+    echo -e "${BOLD}Multiple compose files found. Select one:${NC}"
+    echo ""
+    for i in "${!available_compose_files[@]}"; do
+        echo "  $((i+1))) ${available_compose_files[$i]}"
+    done
+    echo ""
+    read -p "Select compose file (1-${#available_compose_files[@]}): " FILE_SELECTION
+    
+    if [ "$FILE_SELECTION" -lt 1 ] || [ "$FILE_SELECTION" -gt ${#available_compose_files[@]} ]; then
+        print_error "Invalid selection"
+        exit 1
+    fi
+    
+    COMPOSE_FILE="${available_compose_files[$((FILE_SELECTION-1))]}"
 fi
 
 echo ""
