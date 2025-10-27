@@ -122,18 +122,11 @@ scan_deployments() {
     # Find all potential deployments
     deployments=()
     
-    for path_pattern in "${search_paths[@]}"; do
-        for backend_dir in $(find $(dirname $(dirname "$path_pattern")) -maxdepth 3 -type d -name "backend" 2>/dev/null); do
-            app_dir=$(dirname "$backend_dir")
-            
-            # Skip if already in list
-            if [[ " ${deployments[@]} " =~ " ${app_dir} " ]]; then
-                continue
-            fi
-            
-            # Verify it has both backend and frontend
-            if [ -d "$app_dir/frontend" ]; then
-                deployments+=("$app_dir")
+    for base_path in "${search_paths[@]}"; do
+        # Handle wildcards
+        for dir in $base_path; do
+            if [ -d "$dir/backend" ] && [ -d "$dir/frontend" ]; then
+                deployments+=("$dir")
             fi
         done
     done
