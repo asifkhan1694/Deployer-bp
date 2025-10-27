@@ -142,10 +142,48 @@ if [ -z "$application_dirs" ]; then
     echo "  • /app"
     echo "  • /opt/*"
     echo "  • /var/www/*"
-    echo "  • /home/*/app"
+    echo "  • /home/*/*"
     echo "  • /srv/*"
     echo ""
-    exit 1
+    
+    # Check if current directory is an application
+    CURRENT_DIR=$(pwd)
+    if [ -d "$CURRENT_DIR/backend" ] && [ -d "$CURRENT_DIR/frontend" ] && [ -d "$CURRENT_DIR/.git" ]; then
+        print_info "Current directory appears to be an application!"
+        echo ""
+        echo "  📂 $CURRENT_DIR"
+        echo ""
+        
+        if ask_yes_no "Update this application?" "Y"; then
+            application_dirs=("$CURRENT_DIR")
+        else
+            exit 0
+        fi
+    else
+        echo "If your application is elsewhere, you can:"
+        echo "  1. cd to your application directory and run this script"
+        echo "  2. Or specify the path when prompted"
+        echo ""
+        read -p "Enter application directory path (or press Enter to exit): " manual_path
+        
+        if [ -z "$manual_path" ]; then
+            exit 0
+        fi
+        
+        if [ ! -d "$manual_path/backend" ] || [ ! -d "$manual_path/frontend" ]; then
+            print_error "Invalid application directory. Must contain 'backend' and 'frontend' folders."
+            exit 1
+        fi
+        
+        if [ ! -d "$manual_path/.git" ]; then
+            print_warning "Directory is not a git repository"
+            if ! ask_yes_no "Continue anyway?" "N"; then
+                exit 1
+            fi
+        fi
+        
+        application_dirs=("$manual_path")
+    fi
 fi
 
 # Convert to array
