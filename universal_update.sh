@@ -107,49 +107,41 @@ get_git_info() {
 }
 
 scan_deployments() {
-    echo -e "${CYAN}🔍 Scanning system for deployments...${NC}"
-    echo ""
+    # Look for deployments in common locations
+    local found_dirs=()
     
-    # Common deployment locations
-    search_paths=(
-        "/app"
-        "/opt/*"
-        "/var/www/*"
-        "/home/*/app"
-        "/srv/*"
-    )
-    
-    # Find all potential deployments
-    deployments=()
-    
-    for base_path in "${search_paths[@]}"; do
-        # Handle wildcards
-        for dir in $base_path; do
-            if [ -d "$dir/backend" ] && [ -d "$dir/frontend" ]; then
-                deployments+=("$dir")
-            fi
-        done
+    # Check specific directories
+    for base_path in "/app" "/opt"/* "/var/www"/* "/home"/*/app "/srv"/*; do
+        if [ -d "$base_path/backend" ] && [ -d "$base_path/frontend" ]; then
+            found_dirs+=("$base_path")
+        fi
     done
     
     # Also check supervisor for running apps
     if command -v supervisorctl &> /dev/null; then
-        supervisor_apps=$(supervisorctl status 2>/dev/null | grep -E "(backend|frontend)" | awk '{print $1}' | sed 's/:.*//g' | uniq)
-        
-        for app in $supervisor_apps; do
-            # Try to find the directory from supervisor config
-            config_file=$(find /etc/supervisor/conf.d -name "*${app}*.conf" 2>/dev/null | head -1)
-            if [ -n "$config_file" ]; then
-                app_dir=$(grep "directory=" "$config_file" | cut -d= -f2 | xargs dirname 2>/dev/null)
-                if [ -n "$app_dir" ] && [ -d "$app_dir" ]; then
-                    if [[ ! " ${deployments[@]} " =~ " ${app_dir} " ]]; then
-                        deployments+=("$app_dir")
+        local config_files=$(find /etc/supervisor/conf.d -name "*.conf" 2>/dev/null)
+        for config_file in $config_files; do
+            local app_dirs=$(grep "directory=" "$config_file" | cut -d= -f2)
+            for app_dir in $app_dirs; do
+                local parent_dir=$(dirname "$app_dir" 2>/dev/null)
+                if [ -d "$parent_dir/backend" ] && [ -d "$parent_dir/frontend" ]; then
+                    # Check if not already in list
+                    local already_found=false
+                    for existing in "${found_dirs[@]}"; do
+                        if [ "$existing" = "$parent_dir" ]; then
+                            already_found=true
+                            break
+                        fi
+                    done
+                    if [ "$already_found" = false ]; then
+                        found_dirs+=("$parent_dir")
                     fi
                 fi
-            fi
+            done
         done
     fi
     
-    echo "${deployments[@]}"
+    echo "${found_dirs[@]}"
 }
 
 ################################################################################
