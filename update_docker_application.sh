@@ -263,6 +263,12 @@ else
     echo ""
     read -p "Select compose file (1-${#available_compose_files[@]}): " FILE_SELECTION
     
+    # Handle empty input
+    if [ -z "$FILE_SELECTION" ]; then
+        FILE_SELECTION=1
+        print_info "Using default: ${available_compose_files[0]}"
+    fi
+    
     if [ "$FILE_SELECTION" -lt 1 ] || [ "$FILE_SELECTION" -gt ${#available_compose_files[@]} ]; then
         print_error "Invalid selection"
         exit 1
