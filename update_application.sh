@@ -74,7 +74,7 @@ find_applications() {
     local found_dirs=()
     
     # Check common deployment locations
-    for base_path in /app /opt/* /var/www/* /home/*/app /srv/*; do
+    for base_path in /app /opt/* /var/www/* /home/*/* /srv/*; do
         if [ -d "$base_path/backend" ] && [ -d "$base_path/frontend" ]; then
             # Only include if it's a git repository
             if [ -d "$base_path/.git" ]; then
