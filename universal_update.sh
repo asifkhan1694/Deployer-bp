@@ -112,14 +112,11 @@ scan_deployments() {
     
     # Common deployment locations
     search_paths=(
-        "/opt/*/backend"
-        "/opt/*/frontend"
-        "/var/www/*/backend"
-        "/var/www/*/frontend"
-        "/home/*/app/backend"
-        "/home/*/app/frontend"
-        "/srv/*/backend"
-        "/srv/*/frontend"
+        "/app"
+        "/opt/*"
+        "/var/www/*"
+        "/home/*/app"
+        "/srv/*"
     )
     
     # Find all potential deployments
