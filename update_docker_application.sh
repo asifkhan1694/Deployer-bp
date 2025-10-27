@@ -217,6 +217,11 @@ else
     else
         read -p "Select deployment to update (1-${#compose_dirs[@]}) or 0 to exit: " SELECTION
         
+        # Handle empty input
+        if [ -z "$SELECTION" ]; then
+            SELECTION=0
+        fi
+        
         if [ "$SELECTION" -eq 0 ]; then
             echo "Update cancelled"
             exit 0
