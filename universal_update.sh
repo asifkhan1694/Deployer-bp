@@ -159,7 +159,9 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # Scan for deployments
+echo ""
 print_info "Scanning system for deployed applications..."
+echo ""
 sleep 1
 
 deployment_dirs=$(scan_deployments)
